@@ -53,9 +53,25 @@ uv run pytest                  # run tests
 
 ### Docker
 
+You can use the pre-built multi-architecture (AMD64/ARM64) image from the GitHub Container Registry, or build it locally using the `uv` toolchain.
+
+**Using the published image:**
 ```bash
-cd docker
-PEXELS_API_KEY=xxx PIXABAY_API_KEY=yyy docker-compose up --build
+docker run -d -p 8000:8000 \
+  -e PEXELS_API_KEY=xxx \
+  -e PIXABAY_API_KEY=yyy \
+  -v ./downloads:/app/downloads \
+  ghcr.io/YOUR_GITHUB_USER/broll-harness:latest
+```
+
+**Building Locally:**
+```bash
+docker build -t broll-harness -f docker/Dockerfile .
+docker run -d -p 8000:8000 \
+  -e PEXELS_API_KEY=xxx \
+  -e PIXABAY_API_KEY=yyy \
+  -v ./downloads:/app/downloads \
+  broll-harness
 ```
 
 ---
@@ -71,6 +87,9 @@ PEXELS_API_KEY=xxx PIXABAY_API_KEY=yyy docker-compose up --build
 | `make format`| Format code with ruff                   |
 | `make lint`  | Lint code with ruff                     |
 | `make clean` | Remove `.venv` and cache directories     |
+| `make release-patch` | Bump patch version, commit, and tag (0.0.X) |
+| `make release-minor` | Bump minor version, commit, and tag (0.X.0) |
+| `make release-major` | Bump major version, commit, and tag (X.0.0) |
 
 ---
 
