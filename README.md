@@ -61,7 +61,7 @@ docker run -d -p 8000:8000 \
   -e PEXELS_API_KEY=xxx \
   -e PIXABAY_API_KEY=yyy \
   -v ./downloads:/app/downloads \
-  ghcr.io/YOUR_GITHUB_USER/broll-harness:latest
+  ghcr.io/vnturing/broll-harness:latest
 ```
 
 **Building Locally:**
