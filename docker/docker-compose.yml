@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  broll:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../downloads:/app/downloads
+      - ../library.db:/app/library.db
+    environment:
+      - PEXELS_API_KEY=${PEXELS_API_KEY:-}
+      - PIXABAY_API_KEY=${PIXABAY_API_KEY:-}
+    restart: unless-stopped

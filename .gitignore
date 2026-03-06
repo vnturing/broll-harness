@@ -1,0 +1,7 @@
+.env
+downloads/*
+__pycache__
+*Zone.Identifier
+.venv
+*.pyc
+library.db
