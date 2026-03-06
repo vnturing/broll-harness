@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 from pathlib import Path
 
 from .database import init_db
-from .routers import search, download, library
+from .routers import search, download, library, projects
 
 app = FastAPI(title="B-Roll Harness", version="1.0.0")
 
@@ -28,6 +28,7 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 app.include_router(search.router)
 app.include_router(download.router)
 app.include_router(library.router)
+app.include_router(projects.router)
 
 
 @app.get("/", response_class=HTMLResponse)

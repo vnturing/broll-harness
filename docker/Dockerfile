@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 # System deps: ffmpeg + curl for yt-dlp
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -394,6 +394,7 @@
       line-height: 1.4;
       display: -webkit-box;
       -webkit-line-clamp: 2;
+      line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
       margin-bottom: 8px;
@@ -605,6 +606,78 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
+    /* ── Projects sidebar ── */
+    .project-section {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    .project-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .project-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 180px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .project-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 2px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.12s;
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+    .project-item:hover { background: var(--surface); border-color: var(--border); }
+    .project-item.active { border-color: var(--amber); color: var(--amber); background: rgba(212,168,67,0.06); }
+    .project-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+    .project-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0.05em; }
+    .project-del { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 13px; padding: 0 2px; transition: color 0.12s; }
+    .project-del:hover { color: var(--red); }
+    .new-project-form {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+    }
+    .new-project-form input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 5px 8px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .new-project-form input:focus { border-color: var(--amber); }
+    .new-project-form input::placeholder { color: var(--text-dim); }
+    .project-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 5px 8px;
+      outline: none;
+      cursor: pointer;
+      min-width: 160px;
+    }
+    .project-select:focus { border-color: var(--amber); }
+
     /* Responsive */
     @media (max-width: 900px) {
       .app { padding: 0 28px; }
@@ -617,6 +690,7 @@
       .app { padding: 0 24px; }
       .video-grid { grid-template-columns: repeat(2, 1fr); }
     }
+
   </style>
 </head>
 <body>
@@ -755,8 +829,36 @@
 
     <!-- Library sidebar -->
     <div class="library-panel">
+
+      <!-- Projects section -->
+      <div class="project-section">
+        <div class="project-header">
+          <span class="panel-title">Projects</span>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;" @click="showNewProject = !showNewProject">+ New</button>
+        </div>
+        <div class="project-list">
+          <div class="project-item" :class="activeProject === null ? 'active' : ''" @click="filterByProject(null)">
+            <div class="project-dot" style="background:var(--text-dim);"></div>
+            <span class="project-name">All clips</span>
+          </div>
+          <template x-for="proj in projects" :key="proj.id">
+            <div class="project-item" :class="activeProject === proj.id ? 'active' : ''" @click="filterByProject(proj.id)">
+              <div class="project-dot"></div>
+              <span class="project-name" x-text="proj.name"></span>
+              <button class="project-del" @click.stop="deleteProject(proj.id)" title="Delete project">×</button>
+            </div>
+          </template>
+          <div class="empty-state" x-show="projects.length === 0" style="padding:10px 0;font-size:10px;">No projects yet</div>
+        </div>
+        <div class="new-project-form" x-show="showNewProject" x-cloak>
+          <input type="text" x-model="newProjectName" placeholder="Project name…" @keydown.enter="createProject()" @keydown.escape="showNewProject = false" />
+          <button class="btn btn-primary" style="padding:5px 10px;font-size:9px;" @click="createProject()">Add</button>
+        </div>
+      </div>
+
+      <!-- Library header -->
       <div class="panel-header">
-        <span class="panel-title">Local Library</span>
+        <span class="panel-title" x-text="activeProject ? (projects.find(p=>p.id===activeProject)?.name || activeProject) + ' clips' : 'All clips'"></span>
         <button class="btn btn-ghost" style="padding:4px 10px;font-size:10px;" @click="loadLibrary()">↺ Refresh</button>
       </div>
 
@@ -765,7 +867,6 @@
           <div class="empty-icon" style="font-size:24px;">📁</div>
           Downloaded clips appear here
         </div>
-
         <template x-for="item in library" :key="item.id">
           <div class="lib-item">
             <template x-if="item.thumbnail">
@@ -776,7 +877,7 @@
             </template>
             <div class="lib-info">
               <div class="lib-title" x-text="item.title"></div>
-              <div class="lib-meta" x-text="item.source + (item.duration ? ' · ' + fmtDuration(item.duration) : '')"></div>
+              <div class="lib-meta" x-text="item.source + (item.duration ? ' · ' + fmtDuration(item.duration) : '') + (item.project_id ? ' · 📁' + (projects.find(p=>p.id===item.project_id)?.name || item.project_id) : '')"></div>
               <span class="lib-status" :class="item.status" x-text="item.status"></span>
             </div>
             <button class="lib-delete" @click="deleteClip(item.id)" title="Remove">×</button>
@@ -785,6 +886,7 @@
       </div>
     </div>
   </div>
+
 
   <!-- Preview modal -->
   <div class="modal-overlay" x-show="preview" @click.self="closePreview()" x-cloak>
@@ -817,9 +919,17 @@
           <div class="modal-meta" x-text="preview?.source + (preview?.duration ? ' · ' + fmtDuration(preview?.duration) : '') + (preview?.width ? ' · ' + preview.width + '×' + preview.height : '')"></div>
           <div class="modal-license" x-text="preview?.license"></div>
         </div>
-        <button class="btn btn-primary" @click="triggerDownload(preview); closePreview()">
-          ↓ Download
-        </button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+          <select class="project-select" x-model="downloadProjectId">
+            <option value="">No project (downloads/)</option>
+            <template x-for="proj in projects" :key="proj.id">
+              <option :value="proj.id" x-text="proj.name"></option>
+            </template>
+          </select>
+          <button class="btn btn-primary" @click="triggerDownload(preview); closePreview()">
+            ↓ Download
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -847,6 +957,13 @@ function brollApp() {
     downloadStates: {}, // id -> 'downloading' | 'done' | 'error'
     pollTimers: {},
 
+    // Projects
+    projects: [],
+    activeProject: null,
+    showNewProject: false,
+    newProjectName: '',
+    downloadProjectId: '',
+
     sources: [
       { id: 'pexels',  label: 'Pexels',   on: true },
       { id: 'pixabay', label: 'Pixabay',  on: true },
@@ -854,14 +971,61 @@ function brollApp() {
       { id: 'youtube', label: 'YouTube',  on: true },
     ],
 
-    init() {
-      this.loadLibrary();
-      // Refresh library every 5 seconds while any downloads are active
+    async init() {
+      await this.loadProjects();
+      await this.loadLibrary();
       setInterval(() => {
         const hasActive = Object.values(this.downloadStates).some(s => s === 'downloading');
         if (hasActive) this.loadLibrary();
       }, 5000);
     },
+
+    // ── Projects ──
+
+    async loadProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        this.projects = await res.json();
+      } catch (_) {}
+    },
+
+    async createProject() {
+      const name = this.newProjectName.trim();
+      if (!name) return;
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        this.newProjectName = '';
+        this.showNewProject = false;
+        await this.loadProjects();
+        this.toast('Project created', 'success');
+      } catch (e) {
+        this.toast('Failed: ' + e.message, 'error');
+      }
+    },
+
+    async deleteProject(id) {
+      try {
+        await fetch(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (this.activeProject === id) this.activeProject = null;
+        await this.loadProjects();
+        await this.loadLibrary();
+        this.toast('Project deleted', 'info');
+      } catch (e) {
+        this.toast('Delete failed', 'error');
+      }
+    },
+
+    filterByProject(id) {
+      this.activeProject = id;
+      this.loadLibrary();
+    },
+
+    // ── Search ──
 
     activeSources() {
       return this.sources.filter(s => s.on).map(s => s.id).join(',');
@@ -873,7 +1037,6 @@ function brollApp() {
       this.loading = true;
       this.searched = true;
       this.results = [];
-
       try {
         const sources = this.activeSources();
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&sources=${sources}`);
@@ -893,17 +1056,16 @@ function brollApp() {
       this.selected = null;
     },
 
-    selectVideo(video) {
-      this.selected = video;
-    },
+    selectVideo(video) { this.selected = video; },
 
     openPreview(video) {
       this.preview = video;
+      // Pre-select active project
+      this.downloadProjectId = this.activeProject || '';
     },
+    closePreview() { this.preview = null; },
 
-    closePreview() {
-      this.preview = null;
-    },
+    // ── Downloads ──
 
     async triggerDownload(video) {
       if (!video) return;
@@ -923,6 +1085,7 @@ function brollApp() {
             download_url: video.download_url,
             thumbnail: video.thumbnail,
             duration: video.duration,
+            project_id: this.downloadProjectId || null,
           }),
         });
         if (!res.ok) throw new Error(await res.text());
@@ -968,12 +1131,16 @@ function brollApp() {
       return '↓ Save';
     },
 
+    // ── Library ──
+
     async loadLibrary() {
       try {
-        const res = await fetch('/api/library');
+        const url = this.activeProject
+          ? `/api/library?project_id=${encodeURIComponent(this.activeProject)}`
+          : '/api/library';
+        const res = await fetch(url);
         const data = await res.json();
         this.library = data;
-        // Sync download states from library
         data.forEach(item => {
           if (item.status === 'complete') this.downloadStates[item.id] = 'done';
           if (item.status === 'error') this.downloadStates[item.id] = 'error';

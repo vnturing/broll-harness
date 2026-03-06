@@ -4,7 +4,7 @@ import re
 import uuid
 from pathlib import Path
 from sqlalchemy.orm import Session
-from ..database import VideoRecord
+from ..database import VideoRecord, Project
 from ..models.video import DownloadRequest
 from ..config import DOWNLOADS_DIR
 
@@ -77,6 +77,14 @@ async def run_download(request: DownloadRequest, db: Session):
     record.status = "downloading"
     db.commit()
 
+    # Resolve destination directory
+    dest_dir = DOWNLOADS_DIR
+    if request.project_id:
+        project = db.query(Project).filter(Project.id == request.project_id).first()
+        if project:
+            dest_dir = Path(project.directory)
+            dest_dir.mkdir(parents=True, exist_ok=True)
+
     try:
         safe_name = _safe_filename(request.title)
         filepath = None
@@ -84,7 +92,7 @@ async def run_download(request: DownloadRequest, db: Session):
         if request.source == "youtube":
             # Use yt-dlp for YouTube
             result_path = await _download_ytdlp(
-                request.download_url, DOWNLOADS_DIR, request.id.replace("/", "_")
+                request.download_url, dest_dir, request.id.replace("/", "_")
             )
             if result_path:
                 filepath = str(result_path)
@@ -93,10 +101,8 @@ async def run_download(request: DownloadRequest, db: Session):
             ext = "mp4"
             url = request.download_url
             if "archive.org/download/" in url:
-                # Archive.org — get the actual mp4 link
                 url = await _resolve_archive_url(url)
-                ext = "mp4"
-            dest = DOWNLOADS_DIR / f"{request.id}_{safe_name}.{ext}"
+            dest = dest_dir / f"{request.id}_{safe_name}.{ext}"
             success = await _download_direct(url, dest)
             if success:
                 filepath = str(dest)

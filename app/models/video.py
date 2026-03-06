@@ -26,6 +26,7 @@ class DownloadRequest(BaseModel):
     download_url: str
     thumbnail: Optional[str] = None
     duration: Optional[float] = None
+    project_id: Optional[str] = None  # assign to a project at download time
 
 
 class LibraryVideo(BaseModel):
@@ -38,6 +39,7 @@ class LibraryVideo(BaseModel):
     thumbnail: Optional[str]
     original_url: Optional[str]
     status: str
+    project_id: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -46,3 +48,26 @@ class LibraryVideo(BaseModel):
 
 class TagUpdateRequest(BaseModel):
     tags: str
+
+
+class ProjectAssignRequest(BaseModel):
+    project_id: Optional[str] = None  # None = move to "no project"
+
+
+# ---- Projects ----
+
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+
+
+class ProjectOut(BaseModel):
+    id: str
+    name: str
+    description: Optional[str]
+    directory: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

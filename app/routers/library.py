@@ -1,18 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pathlib import Path
-from ..database import get_db, VideoRecord
-from ..models.video import LibraryVideo, TagUpdateRequest
+
+from ..database import get_db, VideoRecord, Project
+from ..models.video import LibraryVideo, TagUpdateRequest, ProjectAssignRequest
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
 
 @router.get("", response_model=List[LibraryVideo])
-async def list_library(db: Session = Depends(get_db)):
-    records = db.query(VideoRecord).order_by(VideoRecord.created_at.desc()).all()
-    return records
+async def list_library(
+    project_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    q = db.query(VideoRecord)
+    if project_id is not None:
+        q = q.filter(VideoRecord.project_id == project_id)
+    return q.order_by(VideoRecord.created_at.desc()).all()
 
 
 @router.delete("/{video_id}")
@@ -43,6 +49,34 @@ async def update_tags(
     record.tags = body.tags
     db.commit()
     return {"id": video_id, "tags": record.tags}
+
+
+@router.patch("/{video_id}/project")
+async def assign_project(
+    video_id: str,
+    body: ProjectAssignRequest,
+    db: Session = Depends(get_db),
+):
+    record = db.query(VideoRecord).filter(VideoRecord.id == video_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    if body.project_id:
+        project = db.query(Project).filter(Project.id == body.project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Move the file to the project directory if it exists
+        if record.filepath:
+            src = Path(record.filepath)
+            if src.exists():
+                dest = Path(project.directory) / src.name
+                src.rename(dest)
+                record.filepath = str(dest)
+
+    record.project_id = body.project_id
+    db.commit()
+    return {"id": video_id, "project_id": record.project_id}
 
 
 @router.get("/file/{video_id}")

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db, VideoRecord
+from ..database import get_db, VideoRecord, Project
 from ..models.video import DownloadRequest, LibraryVideo
 from ..services.download_service import run_download
 
@@ -13,6 +13,12 @@ async def start_download(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    # Validate project if provided
+    if request.project_id:
+        project = db.query(Project).filter(Project.id == request.project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
     # Check if already downloaded
     existing = db.query(VideoRecord).filter(VideoRecord.id == request.id).first()
     if existing and existing.status == "complete":
@@ -27,11 +33,14 @@ async def start_download(
             thumbnail=request.thumbnail,
             original_url=request.download_url,
             duration=request.duration,
+            project_id=request.project_id,
             status="pending",
         )
         db.add(record)
     else:
         existing.status = "pending"
+        if request.project_id:
+            existing.project_id = request.project_id
         record = existing
 
     db.commit()
