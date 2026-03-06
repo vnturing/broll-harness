@@ -40,7 +40,9 @@ async def search_pixabay(query: str, per_page: int = 10) -> List[VideoResult]:
                     title=f"{query.title()} — Pixabay #{video['id']}",
                     source="pixabay",
                     duration=video.get("duration"),
-                    thumbnail=video.get("userImageURL") or video.get("picture_id"),
+                    thumbnail=best.get("thumbnail")
+                    or video.get("userImageURL")
+                    or None,
                     preview_url=best.get("url"),
                     download_url=best.get("url"),
                     license="Pixabay License (Free for commercial use)",

@@ -6,7 +6,7 @@ from ..config import YTDLP_SEARCH_COUNT
 
 
 async def search_youtube(query: str, count: int = None) -> List[VideoResult]:
-    n = count or YTDLP_SEARCH_COUNT
+    n = min(count or YTDLP_SEARCH_COUNT, 5)  # cap at 5 to keep latency low
     search_term = f"ytsearch{n}:{query}"
 
     import shutil
@@ -21,20 +21,31 @@ async def search_youtube(query: str, count: int = None) -> List[VideoResult]:
         "--quiet",
         "--no-warnings",
         "--skip-download",
+        "--flat-playlist",
+        "--socket-timeout",
+        "8",  # abort stalled connections quickly
+        "--retries",
+        "1",
+        "--file-access-retries",
+        "1",
     ]
 
+    proc = None
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=20)
     except asyncio.TimeoutError:
-        print("[YouTube] yt-dlp timed out")
+        if proc:
+            proc.kill()
+            await proc.wait()
+        print("[YouTube] yt-dlp timed out — skipping YouTube results")
         return []
     except FileNotFoundError:
-        print("[YouTube] yt-dlp not found — install it with: pip install yt-dlp")
+        print("[YouTube] yt-dlp not found — install with: uv tool install yt-dlp")
         return []
     except Exception as e:
         print(f"[YouTube] Subprocess error: {e}")
