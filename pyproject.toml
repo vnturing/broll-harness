@@ -1,6 +1,6 @@
 [project]
 name = "broll-harness"
-dynamic = ["version"]
+version = "0.1.1"
 description = "Local research workbench for finding, previewing, and archiving royalty-free video clips"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,6 +35,3 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
-
-[tool.hatch.version]
-path = "app/__init__.py"
